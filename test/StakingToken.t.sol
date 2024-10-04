@@ -13,15 +13,6 @@ contract StakingTokenUnitTests is Test {
 
     function test_stakingToken_InitsSuccessfully() public view {
         assertEq(stakingToken.name(), "StakingToken");
+        assertEq(stakingToken.symbol(), "STK");
     }
-
-    // function test_Increment() public {
-    //     counter.increment();
-    //     assertEq(counter.number(), 1);
-    // }
-
-    // function testFuzz_SetNumber(uint256 x) public {
-    //     counter.setNumber(x);
-    //     assertEq(counter.number(), x);
-    // }
 }
