@@ -11,8 +11,8 @@ contract StakingTokenUnitTests is Test {
         stakingToken = new StakingToken();
     }
 
-    function test_stakingToken_InitsSuccessfully() public {
-        assertEq(1, 1);
+    function test_stakingToken_InitsSuccessfully() public view {
+        assertEq(stakingToken.name(), "StakingToken");
     }
 
     // function test_Increment() public {
