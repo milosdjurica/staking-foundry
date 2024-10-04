@@ -6,9 +6,12 @@ import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces
 
 contract Staking {
     error Staking__AmountMustBeMoreThanZero();
+    error Staking__LockPeriodTooShort();
+    error Staking__UnlockPeriodTooShort();
 
     uint256 public constant MINIMUM_LOCK_PERIOD = 180 days;
-    uint256 public constant MINIMUM_UNLOCKING_PERIOD = 180 days;
+    uint256 public constant MINIMUM_UNLOCK_PERIOD = 180 days;
+    uint256 public constant EIGHTEEN_DECIMALS = 1e18;
 
     StakingToken public immutable i_stakingToken;
     AggregatorV3Interface public immutable i_priceFeed;
@@ -23,9 +26,12 @@ contract Staking {
         i_priceFeed = AggregatorV3Interface(priceFeedAddr_);
     }
 
-    function stakeETH() external payable moreThanZero(msg.value) {
+    function stakeETH(uint256 lockPeriod_, uint256 unlockPeriod_) external payable moreThanZero(msg.value) {
         // ! Check errors
+        if (lockPeriod_ < MINIMUM_LOCK_PERIOD) revert Staking__LockPeriodTooShort();
+        if (unlockPeriod_ < MINIMUM_UNLOCK_PERIOD) revert Staking__UnlockPeriodTooShort();
         // ! Calculate price
+        uint256 tokenAmount = _getTokenAmount(msg.value);
         // ! Update storage
         // ! Give tokens
         // ! Emit
@@ -39,4 +45,9 @@ contract Staking {
         // ! Emit
     }
     // ! Partial unstake
+
+    function _getTokenAmount(uint256 amount_) internal view returns (uint256) {
+        (, int256 price,,,) = i_priceFeed.latestRoundData();
+        return amount_ * uint256(price) / i_priceFeed.decimals();
+    }
 }
