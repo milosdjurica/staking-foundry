@@ -58,7 +58,7 @@ contract Staking {
     }
 
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
-        StakingInfo memory sInfo = userStakings[msg.sender][stakingId_];
+        StakingInfo storage sInfo = userStakings[msg.sender][stakingId_];
         uint256 unlockingStart = sInfo.startTimestamp + sInfo.lockPeriod;
         uint256 unlockingEnd = unlockingStart + sInfo.unlockPeriod;
 
