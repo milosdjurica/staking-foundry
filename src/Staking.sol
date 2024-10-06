@@ -12,11 +12,11 @@ contract Staking {
     error Staking__TransferFailed();
 
     struct StakingInfo {
-        uint256 startAmount;
+        uint256 startAmountETH;
         uint256 startTimestamp;
         uint256 lockPeriod;
         uint256 unlockPeriod;
-        uint256 currentAmount;
+        uint256 currentAmountETH;
         uint256 lastUpdate;
     }
 
@@ -62,25 +62,25 @@ contract Staking {
         uint256 unlockingStart = sInfo.startTimestamp + sInfo.lockPeriod;
         uint256 unlockingEnd = unlockingStart + sInfo.unlockPeriod;
 
-        if (sInfo.currentAmount == 0) revert Staking__AmountMustBeMoreThanZero();
+        if (sInfo.currentAmountETH == 0) revert Staking__AmountMustBeMoreThanZero();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
 
         uint256 canUnstakeAmount;
         if (block.timestamp > unlockingEnd) {
-            canUnstakeAmount = i_stakingToken.balanceOf(msg.sender);
+            canUnstakeAmount = sInfo.currentAmountETH;
         } else {
             canUnstakeAmount =
-                sInfo.startAmount * (block.timestamp - sInfo.lastUpdate) / (unlockingEnd - sInfo.startTimestamp);
+                sInfo.startAmountETH * (block.timestamp - sInfo.lastUpdate) / (unlockingEnd - sInfo.startTimestamp);
         }
 
         if (amount_ > canUnstakeAmount) amount_ = canUnstakeAmount;
         // ! Update storage
-        sInfo.currentAmount -= amount_;
+        sInfo.currentAmountETH -= amount_;
         sInfo.lastUpdate = block.timestamp;
+        // ! TODO -> Burn tokens !!!
 
         (bool success,) = msg.sender.call{value: amount_}("");
         if (!success) revert Staking__TransferFailed();
-        // ! Emit
         emit Unstaked(msg.sender, stakingId_, amount_);
     }
 
