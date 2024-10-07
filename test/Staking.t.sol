@@ -184,7 +184,40 @@ contract StakingUnitTests is Test {
         assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 * 20 / 100);
         skip(MINIMUM_UNLOCK_PERIOD / 5);
         staking.unstakeETH(ONE_ETHER, 0);
+        (,,, uint256 amountReal, uint256 lastUpdateReal) = staking.userStakingsInfo(USER, 0);
+        assertEq(amountReal, 0);
+        assertEq(lastUpdateReal, block.timestamp);
         assertEq(stakingToken.balanceOf(USER), 0);
         vm.stopPrank();
     }
+
+    function test_calculateCanUnstakeAmount_blockTimestampHigher1() public view {
+        uint256 amount = staking.calculateCanUnstakeAmount(
+            Staking.StakingInfo(
+                block.timestamp, MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD, 1 ether, MINIMUM_LOCK_PERIOD
+            )
+        );
+        assertEq(amount, 0);
+    }
+
+    function test_calculateCanUnstakeAmount_blockTimestampHigher2() public {
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
+
+        uint256 amount = staking.calculateCanUnstakeAmount(
+            // ! TODO why 2 ???
+            Staking.StakingInfo(2, MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD, 1 ether, MINIMUM_LOCK_PERIOD)
+        );
+        assertEq(amount, 0.5 ether);
+    }
+
+    function test_calculateCanUnstakeAmount_blockTimestampHigher3() public {
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD + 2);
+
+        console2.log(block.timestamp);
+        uint256 amount = staking.calculateCanUnstakeAmount(
+            Staking.StakingInfo(1, MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD, 1 ether, MINIMUM_LOCK_PERIOD)
+        );
+        assertEq(amount, 1 ether);
+    }
+    // TODO -> check multiple staking(one user many stakes, different users stakings), fuzz tests, integration tests, invariant tests
 }

@@ -79,6 +79,7 @@ contract Staking {
 
     function calculateCanUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
         uint256 unlockingEndTimestamp = sInfo_.startTimestamp + sInfo_.lockPeriod + sInfo_.unlockPeriod;
+        if (block.timestamp < sInfo_.startTimestamp + sInfo_.lockPeriod) return 0;
         return block.timestamp > unlockingEndTimestamp
             ? sInfo_.amountStaked
             : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
