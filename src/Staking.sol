@@ -2,7 +2,6 @@
 pragma solidity 0.8.20;
 
 import {StakingToken} from "./StakingToken.sol";
-// import {AggregatorV3Interface} from "@chainlink/contracts/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 contract Staking {
     error Staking__AmountMustBeMoreThanZero();
@@ -13,7 +12,6 @@ contract Staking {
 
     struct StakingInfo {
         // TODO -> Simplify this struct even more if possible
-        // uint256 startAmountETH;
         uint256 startTimestamp;
         uint256 lockPeriod;
         uint256 unlockPeriod;
@@ -27,7 +25,6 @@ contract Staking {
     uint256 public constant NUM_OF_TOKENS_PER_ETH = 100;
 
     StakingToken public immutable i_stakingToken;
-    // AggregatorV3Interface public immutable i_priceFeed;
 
     mapping(address => mapping(uint256 => StakingInfo)) public userStakings;
     mapping(address => uint256) public userStakingCount;
@@ -42,7 +39,6 @@ contract Staking {
 
     constructor(address stakingTokenAddr_) {
         i_stakingToken = StakingToken(stakingTokenAddr_);
-        // i_priceFeed = AggregatorV3Interface(priceFeedAddr_);
     }
 
     function stakeETH(uint256 lockPeriod_, uint256 unlockPeriod_) external payable moreThanZero(msg.value) {
@@ -59,7 +55,7 @@ contract Staking {
         emit Staked(msg.sender, msg.value, lockPeriod_, unlockPeriod_);
     }
 
-    // TODO -> optimize - less storage reading. Make it memory and then later after changes just update it
+    // TODO -> optimize
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
         StakingInfo memory sInfo = userStakings[msg.sender][stakingId_];
 
@@ -68,16 +64,15 @@ contract Staking {
 
         uint256 canUnstakeAmount = calculateUnstakeAmount(sInfo);
         if (amount_ > canUnstakeAmount) amount_ = canUnstakeAmount;
-        // ! Update storage
+
         sInfo.amountStaked -= amount_;
         sInfo.lastUpdate = block.timestamp;
         userStakings[msg.sender][stakingId_] = sInfo;
-        // ! TODO -> Burn tokens amount * 100(?) !!!
-        i_stakingToken.burn(msg.sender, amount_ * NUM_OF_TOKENS_PER_ETH);
+        emit Unstaked(msg.sender, stakingId_, amount_);
 
+        i_stakingToken.burn(msg.sender, amount_ * NUM_OF_TOKENS_PER_ETH);
         (bool success,) = msg.sender.call{value: amount_}("");
         if (!success) revert Staking__TransferFailed();
-        emit Unstaked(msg.sender, stakingId_, amount_);
     }
 
     function calculateUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
@@ -88,15 +83,11 @@ contract Staking {
             : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
     }
 
-    // ! Create a function to calculate % and return number 0-100, and then calculate burnAmount with that and also calculate amount ETH to send
-
     /**
      *
      * @param amount_ amount of ETH
      */
     function _getTokenAmount(uint256 amount_) internal pure returns (uint256) {
-        // (, int256 price,,,) = i_priceFeed.latestRoundData();
-        // return amount_ * uint256(price) / i_priceFeed.decimals();
         return amount_ * NUM_OF_TOKENS_PER_ETH;
     }
 }
