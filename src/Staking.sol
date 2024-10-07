@@ -12,7 +12,7 @@ contract Staking {
     error Staking__TransferFailed();
 
     struct StakingInfo {
-        // TODO -> Simplify this struct -> remove startAmountETH and something else if possible
+        // TODO -> Simplify this struct even more if possible
         // uint256 startAmountETH;
         uint256 startTimestamp;
         uint256 lockPeriod;
@@ -61,7 +61,7 @@ contract Staking {
 
     // TODO -> optimize - less storage reading. Make it memory and then later after changes just update it
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
-        StakingInfo storage sInfo = userStakings[msg.sender][stakingId_];
+        StakingInfo memory sInfo = userStakings[msg.sender][stakingId_];
 
         if (sInfo.amountStaked == 0) revert Staking__AmountMustBeMoreThanZero();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
@@ -71,7 +71,9 @@ contract Staking {
         // ! Update storage
         sInfo.amountStaked -= amount_;
         sInfo.lastUpdate = block.timestamp;
+        userStakings[msg.sender][stakingId_] = sInfo;
         // ! TODO -> Burn tokens amount * 100(?) !!!
+        i_stakingToken.burn(msg.sender, amount_ * NUM_OF_TOKENS_PER_ETH);
 
         (bool success,) = msg.sender.call{value: amount_}("");
         if (!success) revert Staking__TransferFailed();
