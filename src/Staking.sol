@@ -47,8 +47,9 @@ contract Staking {
         if (unlockPeriod_ < MINIMUM_UNLOCK_PERIOD) revert Staking__UnlockPeriodTooShort();
         uint256 stakingId = userStakingCount[msg.sender];
 
+        // ! CHANGED -> lastUpdate == BLOCK TIMESTAMP + LOCK PERIOD !!!!
         userStakingsInfo[msg.sender][stakingId] =
-            StakingInfo(block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp);
+            StakingInfo(block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp + lockPeriod_);
         userStakingCount[msg.sender]++;
 
         uint256 tokenAmount = msg.value * NUM_OF_TOKENS_PER_ETH;
@@ -63,7 +64,7 @@ contract Staking {
         if (sInfo.amountStaked == 0) revert Staking__NothingIsStaked();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
 
-        uint256 canUnstakeAmount = calculateUnstakeAmount(sInfo);
+        uint256 canUnstakeAmount = calculateCanUnstakeAmount(sInfo);
         if (amount_ > canUnstakeAmount) amount_ = canUnstakeAmount;
 
         sInfo.amountStaked -= amount_;
@@ -76,25 +77,10 @@ contract Staking {
         if (!success) revert Staking__TransferFailed();
     }
 
-    // ! Problem on first unstake, lastUpdate is before lock, and not after it
-    // ! amountStaked * (block.timestamp-sInfo_.lastUpdate) / (total unlocking period)
-    function calculateUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
+    function calculateCanUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
         uint256 unlockingEndTimestamp = sInfo_.startTimestamp + sInfo_.lockPeriod + sInfo_.unlockPeriod;
         return block.timestamp > unlockingEndTimestamp
             ? sInfo_.amountStaked
-            // : sInfo_.startAmountETH * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
-            : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
-        // : sInfo_.amountStaked * (block.timestamp - sInfo_.startTimestamp - sInfo_.lockPeriod) / sInfo_.unlockPeriod;
+            : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
     }
 }
-
-/**
- * 1 STEP ---------------->
- * start timestamp 1
- * amount 1 eth
- * lock 180 days
- * unlock 180 days
- * last update 1
- *
- *
- */

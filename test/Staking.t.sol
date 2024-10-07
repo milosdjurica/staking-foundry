@@ -95,7 +95,7 @@ contract StakingUnitTests is Test {
         assertEq(lockPeriodReal, MINIMUM_LOCK_PERIOD);
         assertEq(unlockPeriodReal, MINIMUM_UNLOCK_PERIOD);
         assertEq(amountReal, ONE_ETHER);
-        assertEq(lastUpdateReal, block.timestamp);
+        assertEq(lastUpdateReal, block.timestamp + MINIMUM_LOCK_PERIOD);
 
         assertEq(staking.userStakingCount(USER), 1);
         assertEq(stakingToken.balanceOf(USER), ONE_ETHER * NUM_OF_TOKENS_PER_ETH);
@@ -138,45 +138,53 @@ contract StakingUnitTests is Test {
         vm.stopPrank();
     }
 
-    // function test_unstakeETH_PartialUnstake() public {
-    //     vm.startPrank(USER);
+    function test_unstakeETH_partialUnstake1() public {
+        vm.startPrank(USER);
 
-    //     staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
-    //     skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
+        staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
 
-    //     staking.unstakeETH(ONE_ETHER, 0);
-    //     vm.stopPrank();
+        staking.unstakeETH(ONE_ETHER, 0);
+        vm.stopPrank();
 
-    //     assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 / 2);
-    // }
+        assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 / 2);
+    }
 
-    // function test_unstakeETH_PartialUnstake2() public {
-    //     vm.startPrank(USER);
+    function test_unstakeETH_partialUnstake2() public {
+        vm.startPrank(USER);
 
-    //     staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
-    //     skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
+        staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
 
-    //     staking.unstakeETH(ONE_ETHER, 0);
-    //     skip(MINIMUM_UNLOCK_PERIOD);
-    //     staking.unstakeETH(ONE_ETHER, 0);
+        staking.unstakeETH(ONE_ETHER, 0);
+        skip(MINIMUM_UNLOCK_PERIOD);
+        staking.unstakeETH(ONE_ETHER, 0);
 
-    //     vm.stopPrank();
+        vm.stopPrank();
 
-    //     assertEq(stakingToken.balanceOf(USER), 0);
-    // }
+        assertEq(stakingToken.balanceOf(USER), 0);
+    }
 
-    // function test_unstakeETH_PartialUnstake3() public {
-    //     vm.startPrank(USER);
+    function test_unstakeETH_partialUnstake3() public {
+        vm.startPrank(USER);
 
-    //     staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
-    //     skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
+        staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD / 2);
+        staking.unstakeETH(ONE_ETHER, 0);
+        assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 / 2);
 
-    //     staking.unstakeETH(ONE_ETHER, 0);
-    //     skip(MINIMUM_UNLOCK_PERIOD / 10);
-    //     staking.unstakeETH(ONE_ETHER, 0);
+        skip(MINIMUM_UNLOCK_PERIOD / 10);
+        staking.unstakeETH(ONE_ETHER, 0);
+        // ! 40 % left
+        assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 * 40 / 100);
 
-    //     vm.stopPrank();
-
-    //     assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 40);
-    // }
+        skip(MINIMUM_UNLOCK_PERIOD / 5);
+        staking.unstakeETH(ONE_ETHER, 0);
+        // ! 20% left
+        assertEq(stakingToken.balanceOf(USER), ONE_ETHER * 100 * 20 / 100);
+        skip(MINIMUM_UNLOCK_PERIOD / 5);
+        staking.unstakeETH(ONE_ETHER, 0);
+        assertEq(stakingToken.balanceOf(USER), 0);
+        vm.stopPrank();
+    }
 }
