@@ -9,6 +9,7 @@ contract Staking {
     error Staking__UnlockPeriodTooShort();
     error Staking__LockPeriodNotFinished();
     error Staking__TransferFailed();
+    error Staking__NothingIsStaked();
 
     struct StakingInfo {
         // TODO -> Simplify this struct even more if possible
@@ -44,13 +45,13 @@ contract Staking {
     function stakeETH(uint256 lockPeriod_, uint256 unlockPeriod_) external payable moreThanZero(msg.value) {
         if (lockPeriod_ < MINIMUM_LOCK_PERIOD) revert Staking__LockPeriodTooShort();
         if (unlockPeriod_ < MINIMUM_UNLOCK_PERIOD) revert Staking__UnlockPeriodTooShort();
-        uint256 tokenAmount = msg.value * NUM_OF_TOKENS_PER_ETH;
         uint256 stakingId = userStakingCount[msg.sender];
 
         userStakingsInfo[msg.sender][stakingId] =
             StakingInfo(block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp);
         userStakingCount[msg.sender]++;
 
+        uint256 tokenAmount = msg.value * NUM_OF_TOKENS_PER_ETH;
         i_stakingToken.mint(msg.sender, tokenAmount);
         emit Staked(msg.sender, msg.value, lockPeriod_, unlockPeriod_);
     }
@@ -59,7 +60,7 @@ contract Staking {
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
         StakingInfo memory sInfo = userStakingsInfo[msg.sender][stakingId_];
 
-        if (sInfo.amountStaked == 0) revert Staking__AmountMustBeMoreThanZero();
+        if (sInfo.amountStaked == 0) revert Staking__NothingIsStaked();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
 
         uint256 canUnstakeAmount = calculateUnstakeAmount(sInfo);
@@ -75,11 +76,25 @@ contract Staking {
         if (!success) revert Staking__TransferFailed();
     }
 
+    // ! Problem on first unstake, lastUpdate is before lock, and not after it
+    // ! amountStaked * (block.timestamp-sInfo_.lastUpdate) / (total unlocking period)
     function calculateUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
         uint256 unlockingEndTimestamp = sInfo_.startTimestamp + sInfo_.lockPeriod + sInfo_.unlockPeriod;
         return block.timestamp > unlockingEndTimestamp
             ? sInfo_.amountStaked
             // : sInfo_.startAmountETH * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
-            : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
+            : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
+        // : sInfo_.amountStaked * (block.timestamp - sInfo_.startTimestamp - sInfo_.lockPeriod) / sInfo_.unlockPeriod;
     }
 }
+
+/**
+ * 1 STEP ---------------->
+ * start timestamp 1
+ * amount 1 eth
+ * lock 180 days
+ * unlock 180 days
+ * last update 1
+ *
+ *
+ */
