@@ -101,8 +101,16 @@ contract StakingUnitTests is Test {
         assertEq(stakingToken.balanceOf(USER), ONE_ETHER * NUM_OF_TOKENS_PER_ETH);
     }
 
-    function _compareStructs(StakingInfo memory a, StakingInfo memory b) internal pure {
-        assertEq(abi.encode(a), abi.encode(b));
+    function test_stakeETH_userMultipleStakes() public {
+        vm.startPrank(USER);
+        staking.stakeETH{value: 1 ether}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        staking.stakeETH{value: 1 ether}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        (,,, uint256 amountStaked,) = staking.userStakingsInfo(USER, 0);
+
+        assertEq(stakingToken.balanceOf(USER), 2 ether * 100);
+        assertEq(staking.userStakingCount(USER), 2);
+        assertEq(amountStaked, 1 ether);
+        vm.stopPrank();
     }
 
     function test_unstakeETH_RevertIf_amountIsZero() public {
@@ -213,11 +221,25 @@ contract StakingUnitTests is Test {
     function test_calculateCanUnstakeAmount_blockTimestampHigher3() public {
         skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD + 2);
 
-        console2.log(block.timestamp);
         uint256 amount = staking.calculateCanUnstakeAmount(
             Staking.StakingInfo(1, MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD, 1 ether, MINIMUM_LOCK_PERIOD)
         );
         assertEq(amount, 1 ether);
     }
+
+    function test_stakeETH_userMultipleStakesWithPartialUnstake() public {
+        vm.startPrank(USER);
+        staking.stakeETH{value: 1 ether}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        staking.stakeETH{value: 1 ether}(MINIMUM_LOCK_PERIOD, MINIMUM_UNLOCK_PERIOD);
+        skip(MINIMUM_LOCK_PERIOD + MINIMUM_UNLOCK_PERIOD);
+        staking.unstakeETH(ONE_ETHER / 2, 0);
+
+        assertEq(stakingToken.balanceOf(USER), 1.5 ether * 100);
+        assertEq(staking.userStakingCount(USER), 2);
+        (,,, uint256 amountStaked,) = staking.userStakingsInfo(USER, 0);
+        assertEq(amountStaked, 0.5 ether);
+        vm.stopPrank();
+    }
+
     // TODO -> check multiple staking(one user many stakes, different users stakings), fuzz tests, integration tests, invariant tests
 }
