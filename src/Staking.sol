@@ -26,7 +26,7 @@ contract Staking {
 
     StakingToken public immutable i_stakingToken;
 
-    mapping(address => mapping(uint256 => StakingInfo)) public userStakings;
+    mapping(address => mapping(uint256 => StakingInfo)) public userStakingsInfo;
     mapping(address => uint256) public userStakingCount;
 
     event Staked(address indexed who, uint256 indexed amount, uint256 indexed lockPeriod, uint256 unlockPeriod);
@@ -44,10 +44,10 @@ contract Staking {
     function stakeETH(uint256 lockPeriod_, uint256 unlockPeriod_) external payable moreThanZero(msg.value) {
         if (lockPeriod_ < MINIMUM_LOCK_PERIOD) revert Staking__LockPeriodTooShort();
         if (unlockPeriod_ < MINIMUM_UNLOCK_PERIOD) revert Staking__UnlockPeriodTooShort();
-        uint256 tokenAmount = _getTokenAmount(msg.value);
+        uint256 tokenAmount = msg.value * NUM_OF_TOKENS_PER_ETH;
         uint256 stakingId = userStakingCount[msg.sender];
 
-        userStakings[msg.sender][stakingId] =
+        userStakingsInfo[msg.sender][stakingId] =
             StakingInfo(block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp);
         userStakingCount[msg.sender]++;
 
@@ -57,7 +57,7 @@ contract Staking {
 
     // TODO -> optimize
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
-        StakingInfo memory sInfo = userStakings[msg.sender][stakingId_];
+        StakingInfo memory sInfo = userStakingsInfo[msg.sender][stakingId_];
 
         if (sInfo.amountStaked == 0) revert Staking__AmountMustBeMoreThanZero();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
@@ -67,7 +67,7 @@ contract Staking {
 
         sInfo.amountStaked -= amount_;
         sInfo.lastUpdate = block.timestamp;
-        userStakings[msg.sender][stakingId_] = sInfo;
+        userStakingsInfo[msg.sender][stakingId_] = sInfo;
         emit Unstaked(msg.sender, stakingId_, amount_);
 
         i_stakingToken.burn(msg.sender, amount_ * NUM_OF_TOKENS_PER_ETH);
@@ -81,13 +81,5 @@ contract Staking {
             ? sInfo_.amountStaked
             // : sInfo_.startAmountETH * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
             : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
-    }
-
-    /**
-     *
-     * @param amount_ amount of ETH
-     */
-    function _getTokenAmount(uint256 amount_) internal pure returns (uint256) {
-        return amount_ * NUM_OF_TOKENS_PER_ETH;
     }
 }
