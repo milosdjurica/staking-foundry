@@ -13,11 +13,11 @@ contract Staking {
 
     struct StakingInfo {
         // TODO -> Simplify this struct -> remove startAmountETH and something else if possible
-        uint256 startAmountETH;
+        // uint256 startAmountETH;
         uint256 startTimestamp;
         uint256 lockPeriod;
         uint256 unlockPeriod;
-        uint256 currentAmountETH;
+        uint256 amountStaked;
         uint256 lastUpdate;
     }
 
@@ -52,7 +52,7 @@ contract Staking {
         uint256 stakingId = userStakingCount[msg.sender];
 
         userStakings[msg.sender][stakingId] =
-            StakingInfo(msg.value, block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp);
+            StakingInfo(block.timestamp, lockPeriod_, unlockPeriod_, msg.value, block.timestamp);
         userStakingCount[msg.sender]++;
 
         i_stakingToken.mint(msg.sender, tokenAmount);
@@ -63,13 +63,13 @@ contract Staking {
     function unstakeETH(uint256 amount_, uint256 stakingId_) external moreThanZero(amount_) {
         StakingInfo storage sInfo = userStakings[msg.sender][stakingId_];
 
-        if (sInfo.currentAmountETH == 0) revert Staking__AmountMustBeMoreThanZero();
+        if (sInfo.amountStaked == 0) revert Staking__AmountMustBeMoreThanZero();
         if (sInfo.startTimestamp + sInfo.lockPeriod > block.timestamp) revert Staking__LockPeriodNotFinished();
 
         uint256 canUnstakeAmount = calculateUnstakeAmount(sInfo);
         if (amount_ > canUnstakeAmount) amount_ = canUnstakeAmount;
         // ! Update storage
-        sInfo.currentAmountETH -= amount_;
+        sInfo.amountStaked -= amount_;
         sInfo.lastUpdate = block.timestamp;
         // ! TODO -> Burn tokens amount * 100(?) !!!
 
@@ -81,9 +81,9 @@ contract Staking {
     function calculateUnstakeAmount(StakingInfo memory sInfo_) public view returns (uint256) {
         uint256 unlockingEndTimestamp = sInfo_.startTimestamp + sInfo_.lockPeriod + sInfo_.unlockPeriod;
         return block.timestamp > unlockingEndTimestamp
-            ? sInfo_.currentAmountETH
-            : sInfo_.startAmountETH * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
-        // : sInfo_.currentAmountETH * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
+            ? sInfo_.amountStaked
+            // : sInfo_.startAmountETH * (block.timestamp - sInfo_.lastUpdate) / sInfo_.unlockPeriod;
+            : sInfo_.amountStaked * (block.timestamp - sInfo_.lastUpdate) / (unlockingEndTimestamp - sInfo_.lastUpdate);
     }
 
     // ! Create a function to calculate % and return number 0-100, and then calculate burnAmount with that and also calculate amount ETH to send
