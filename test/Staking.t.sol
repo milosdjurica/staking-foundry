@@ -11,6 +11,8 @@ contract StakingUnitTests is Test {
     Staking staking;
     StakingDeployScript stakingDeployScript;
 
+    event Staked(address indexed who, uint256 indexed amount, uint256 indexed lockPeriod, uint256 unlockPeriod);
+
     struct StakingInfo {
         uint256 startTimestamp;
         uint256 lockPeriod;
@@ -77,6 +79,8 @@ contract StakingUnitTests is Test {
     function test_stakeETH_Success() public {
         vm.prank(USER);
         // ! Expect emit
+        vm.expectEmit(true, true, true, true, address(staking));
+        emit Staked(USER, ONE_ETHER, MINIMUM_LOCK_PERIOD + 1, MINIMUM_UNLOCK_PERIOD + 1);
         staking.stakeETH{value: ONE_ETHER}(MINIMUM_LOCK_PERIOD + 1, MINIMUM_UNLOCK_PERIOD + 1);
 
         (
