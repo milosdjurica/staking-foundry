@@ -2,15 +2,19 @@
 pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
+import {StakingToken, Staking} from "../src/Staking.sol";
 
 contract StakingDeployScript is Script {
-    string public constant SEPOLIA_PRICE_FEED_ADDRESS = "0x694aa1769357215de4fac081bf1f309adc325306";
+    function run() public returns (StakingToken, Staking) {
+        vm.startBroadcast();
 
-    function setUp() public {
-        // ! Deploy, change ownership, different chains, test script...
-    }
+        StakingToken stakingToken = new StakingToken();
+        Staking staking = new Staking(address(stakingToken));
 
-    function run() public {
-        vm.broadcast();
+        stakingToken.transferOwnership(address(staking));
+
+        vm.stopBroadcast();
+
+        return (stakingToken, staking);
     }
 }
